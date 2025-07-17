@@ -3,15 +3,16 @@ package com.googleapi;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
+//import io.restassured.mapper.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.restassured.response.Response;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -200,6 +201,130 @@ public class DriveApiTest {
 
         System.out.println("Starred File Response: " + response.asPrettyString());
     }
+    @Test
+    public void createGoogleDocInSharedFolder() throws IOException {
+        String token = getAccessToken().getTokenValue();
+
+        String folderId = "1OnT8R7OkvUhkoHZtypc9BQHibAR0lNru"; // Replace with your shared folder ID
+
+        String requestBody = """
+        {
+          "name": "My Test Doc From API",
+          "mimeType": "application/vnd.google-apps.document",
+          "parents": [ "%s" ]
+        }
+        """.formatted(folderId);
+
+        Response response = given()
+                .baseUri("https://www.googleapis.com")
+                .basePath("/drive/v3/files")
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json")
+                .body(requestBody)
+                .when()
+                .post()
+                .then()
+                .statusCode(200)
+                .body("id", notNullValue())
+                .body("name", equalTo("My Test Doc From API"))
+                .extract().response();
+
+        String newFileId = response.path("id");
+        System.out.println("✅ Created file ID: " + newFileId);
+    }
+
+
+    @Test
+    public void copyFileInDrive() throws IOException {
+        String token = getAccessToken().getTokenValue();
+
+        String sourceFileId = "1NsGRq0LrQ1ubWxNRxQGOUiPhkG9HgRkf"; // your file
+        String destinationFolderId = "1GyhLU495wkQSyR8-9_NhlpGWmadhdv0R"; // service account folder
+
+        // Request body to define new copy's name and parent folder
+        String requestBody = """
+    {
+      "name": "CopiedFileFromAPI.txt",
+      "parents": ["%s"]
+    }
+    """.formatted(destinationFolderId);
+
+        Response response = given()
+                .baseUri("https://www.googleapis.com")
+                .basePath("/drive/v3/files/" + sourceFileId + "/copy")
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json")
+                .body(requestBody)
+                .when()
+                .post();
+
+        // ✅ Validation
+        response.then()
+                .statusCode(200)
+                .body("id", notNullValue())
+                .body("name", equalTo("CopiedFileFromAPI.txt"));
+
+        System.out.println("✅ Copied File ID: " + response.path("id"));
+    }
+
+
+    @Test
+    public void listFilesCreatedByServiceAccount() throws IOException {
+        String token = getAccessToken().getTokenValue();
+
+        Response response = given()
+                .baseUri("https://www.googleapis.com")
+                .basePath("/drive/v3/files")
+                .queryParam("fields", "files(id,name,owners)")
+                .queryParam("pageSize", 50)
+                .header("Authorization", "Bearer " + token)
+                .header("Accept", "application/json")
+                .when()
+                .get();
+
+        response.then()
+                .statusCode(200)
+                .body("files", notNullValue());
+
+        List<Map<String, Object>> files = response.jsonPath().getList("files");
+
+        for (Map<String, Object> file : files) {
+            String id = (String) file.get("id");
+            String name = (String) file.get("name");
+            List<Map<String, Object>> owners = (List<Map<String, Object>>) file.get("owners");
+            String ownerEmail = owners != null && !owners.isEmpty() ? (String) owners.get(0).get("emailAddress") : "unknown";
+
+            System.out.printf("📄 Name: %s, ID: %s, Owner: %s%n", name, id, ownerEmail);
+        }
+    }
+    @Test
+    public void shareFileWithServiceAccount() {
+        String accessToken = System.getenv("GOOGLE_PERSONAL_ACCESS_TOKEN");
+        String fileId = "1NsGRq0LrQ1ubWxNRxQGOUiPhkG9HgRkf";
+        String serviceAccountEmail = "drive-api-tester@driveapitest-466023.iam.gserviceaccount.com";
+
+        Response response = given()
+                .baseUri("https://www.googleapis.com/drive/v3")
+                .basePath("/files/{fileId}/permissions")
+                .pathParam("fileId", fileId)
+                .header("Authorization", "Bearer " + accessToken)
+                .header("Content-Type", "application/json")
+                .body("{\"role\": \"reader\", \"type\": \"user\", \"emailAddress\": \"" + serviceAccountEmail + "\"}")
+                .when()
+                .post()
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract().response();
+
+        String permissionId = response.path("id");
+        System.out.println("✅ Permission granted to service account with ID: " + permissionId);
+    }
+
+
+
+
+
 
 
 }
