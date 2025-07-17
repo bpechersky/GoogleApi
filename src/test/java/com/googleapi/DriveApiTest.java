@@ -62,5 +62,31 @@ public class DriveApiTest {
             System.out.printf("✅ File: %s (%s)%n", file.get("name"), file.get("mimeType"));
         }
     }
+    @Test
+    public void getDriveAboutInfo() throws IOException {
+        String token = getAccessToken();
+
+        Response response = given()
+                .baseUri("https://www.googleapis.com")
+                .basePath("/drive/v3/about")
+                .queryParam("fields", "user,storageQuota,maxUploadSize")
+                .header("Authorization", "Bearer " + token)
+                .header("Accept", "application/json")
+                .when()
+                .get();
+
+        // ✅ Basic response validation
+        response.then()
+                .statusCode(200)
+                .body("user.displayName", notNullValue())
+                .body("user.emailAddress", notNullValue())
+                .body("storageQuota.limit", notNullValue())
+                .body("storageQuota.usage", notNullValue());
+
+        // ✅ Print for debug
+        System.out.println("📊 Drive Info:");
+        System.out.println(response.asPrettyString());
+    }
+
 
 }
