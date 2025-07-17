@@ -1,5 +1,6 @@
 package com.googleapi;
 
+import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.restassured.response.Response;
 import org.testng.Assert;
@@ -21,6 +22,10 @@ public class DriveApiTest {
                 .fromStream(new FileInputStream("src/test/resources/credentials.json"))
                 .createScoped(Collections.singletonList("https://www.googleapis.com/auth/drive.metadata.readonly"));
         credentials.refreshIfExpired();
+        AccessToken token = credentials.getAccessToken();
+        System.out.println("Access token: " + token.getTokenValue());
+        System.out.println("Expires at: " + token.getExpirationTime());
+
         return credentials.getAccessToken().getTokenValue();
     }
 
