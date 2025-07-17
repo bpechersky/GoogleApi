@@ -131,6 +131,31 @@ public class DriveApiTest {
         System.out.println("📁 Folder created: " + response.jsonPath().getString("id"));
     }
 
+    @Test
+    public void updateFileNameInDrive() throws IOException {
+        String token = getAccessToken().getTokenValue();
+
+        String fileId = "1NsGRq0LrQ1ubWxNRxQGOUiPhkG9HgRkf"; // Replace with your test file ID
+
+        String updatedName = "UpdatedTestFileName.txt";
+
+        Response response = given()
+                .baseUri("https://www.googleapis.com")
+                .basePath("/drive/v3/files/" + fileId)
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json")
+                .queryParam("fields", "id, name")
+                .body("{\"name\": \"" + updatedName + "\"}")
+                .when()
+                .request("PATCH")
+                .then()
+                .statusCode(200)
+                .body("id", equalTo(fileId))
+                .body("name", equalTo(updatedName))
+                .extract().response();
+
+        System.out.println("Updated File: " + response.asPrettyString());
+    }
 
 
 
