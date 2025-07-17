@@ -1,0 +1,41 @@
+name: Run Google Drive API Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 24
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '24'
+
+      - name: Set up Maven
+        uses: stCarolas/setup-maven@v4
+        with:
+          maven-version: '3.9.6'
+
+      - name: Restore credentials.json (from secret)
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICE_CREDENTIALS_JSON }}" > credentials.json
+
+      - name: Run tests with Maven
+        run: mvn clean test
+
+      - name: Archive TestNG Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testng-results
+          path: target/surefire-reports

@@ -156,7 +156,50 @@ public class DriveApiTest {
 
         System.out.println("Updated File: " + response.asPrettyString());
     }
+    @Test
+    public void getFileMetadataById() throws IOException {
+        String token = getAccessToken().getTokenValue();
+        String fileId = "1NsGRq0LrQ1ubWxNRxQGOUiPhkG9HgRkf"; // Replace with your actual file ID
 
+        Response response = given()
+                .baseUri("https://www.googleapis.com")
+                .basePath("/drive/v3/files/" + fileId)
+                .header("Authorization", "Bearer " + token)
+                .queryParam("fields", "id, name, mimeType, size")
+                .when()
+                .get()
+                .then()
+                .statusCode(200)
+                .body("id", equalTo(fileId))
+                .body("name", notNullValue())
+                .body("mimeType", notNullValue())
+                .extract().response();
+
+        System.out.println("Metadata: " + response.asPrettyString());
+    }
+
+    @Test
+    public void starFileInDrive() throws IOException {
+        String token = getAccessToken().getTokenValue();
+        String fileId = "1NsGRq0LrQ1ubWxNRxQGOUiPhkG9HgRkf"; // Replace with your actual file ID
+
+        Response response = given()
+                .baseUri("https://www.googleapis.com")
+                .basePath("/drive/v3/files/" + fileId)
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json")
+                .queryParam("fields", "id, name, starred")
+                .body("{\"starred\": true}")
+                .when()
+                .request("PATCH")
+                .then()
+                .statusCode(200)
+                .body("id", equalTo(fileId))
+                .body("starred", equalTo(true))
+                .extract().response();
+
+        System.out.println("Starred File Response: " + response.asPrettyString());
+    }
 
 
 }
